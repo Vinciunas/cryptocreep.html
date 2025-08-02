@@ -1,0 +1,226 @@
+<!-- cryptoCreep.html -->
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CryptoCreep – Kripto naujienos</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-color: #111;
+      --text-color: #f1f1f1;
+      --card-bg: #1d1d1d;
+      --border: #2c2c2c;
+    }
+    body.light {
+      --bg-color: #f1f1f1;
+      --text-color: #111;
+      --card-bg: #fff;
+      --border: #ccc;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: 0.3s;
+    }
+    header {
+      background: var(--card-bg);
+      padding: 20px;
+      text-align: center;
+      border-bottom: 2px solid var(--border);
+      position: relative;
+    }
+    header h1 {
+      color: #32d296;
+      margin: 0;
+    }
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 10px;
+    }
+    nav a {
+      color: var(--text-color);
+      text-decoration: none;
+      font-weight: bold;
+    }
+    nav a:hover {
+      color: #32d296;
+    }
+    .lang-theme-switch {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+    .section {
+      margin-bottom: 40px;
+    }
+    h2 {
+      border-left: 4px solid #32d296;
+      padding-left: 10px;
+      margin-bottom: 10px;
+    }
+    .card {
+      background: var(--card-bg);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border);
+    }
+    canvas {
+      background: var(--card-bg);
+      padding: 10px;
+      border-radius: 8px;
+    }
+    select, button {
+      background-color: var(--card-bg);
+      color: var(--text-color);
+      border: 1px solid #32d296;
+      padding: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .news-bar {
+      background: #32d296;
+      color: #111;
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="news-bar" id="newsBar">
+    🚀 Crypto naujienos įkraunamos...
+  </div>
+
+  <header>
+    <h1 data-text="title">CryptoCreep</h1>
+    <nav>
+      <a href="#prices" data-text="nav_prices">Kainos</a>
+      <a href="#chart" data-text="nav_chart">Grafikai</a>
+    </nav>
+    <div class="lang-theme-switch">
+      <select id="languageSelector">
+        <option value="lt">🇱🇹 Lietuvių</option>
+        <option value="en">🇬🇧 English</option>
+      </select>
+      <button onclick="toggleTheme()">🌗</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <section id="prices" class="section">
+      <h2 data-text="live_prices">🔴 Tiesioginės kainos</h2>
+      <div id="priceCards"></div>
+    </section>
+
+    <section id="chart" class="section">
+      <h2 data-text="price_trend">📈 Kainų grafikai</h2>
+      <canvas id="btcChart" height="200"></canvas>
+      <br/>
+      <canvas id="ethChart" height="200"></canvas>
+    </section>
+  </div>
+
+  <script>
+    const API_KEY = 'YOUR_API_KEY_HERE'; // <--- Įdėk savo CMC API raktą
+    const coins = ['BTC', 'ETH', 'SOL', 'ADA'];
+
+    const translations = {
+      lt: {
+        title: "CryptoCreep",
+        nav_prices: "Kainos",
+        nav_chart: "Grafikai",
+        live_prices: "🔴 Tiesioginės kainos",
+        price_trend: "📈 Kainų grafikai",
+        news_loading: "🚀 Įkraunamos naujienos...",
+      },
+      en: {
+        title: "CryptoCreep",
+        nav_prices: "Prices",
+        nav_chart: "Charts",
+        live_prices: "🔴 Live Prices",
+        price_trend: "📈 Price Charts",
+        news_loading: "🚀 Loading news...",
+      }
+    };
+
+    function updateLanguage(lang) {
+      document.querySelectorAll("[data-text]").forEach(el => {
+        const key = el.getAttribute("data-text");
+        el.textContent = translations[lang][key];
+      });
+      document.getElementById("newsBar").textContent = translations[lang].news_loading;
+    }
+
+    document.getElementById("languageSelector").addEventListener("change", (e) => {
+      updateLanguage(e.target.value);
+    });
+
+    function toggleTheme() {
+      document.body.classList.toggle("light");
+    }
+
+    async function fetchPrices() {
+      const res = await fetch(`https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=${coins.join(',')}`, {
+        headers: { 'X-CMC_PRO_API_KEY': API_KEY }
+      });
+      const data = await res.json();
+      const container = document.getElementById("priceCards");
+      container.innerHTML = '';
+      coins.forEach(symbol => {
+        const price = data.data[symbol].quote.USD.price.toFixed(2);
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `<strong>${symbol}:</strong> ${price} USD`;
+        container.appendChild(card);
+      });
+    }
+
+    function drawChart(canvasId, label, dataPoints) {
+      new Chart(document.getElementById(canvasId), {
+        type: 'line',
+        data: {
+          labels: ['Pr', 'An', 'Tr', 'Ke', 'Pe', 'Še', 'Se'],
+          datasets: [{
+            label,
+            data: dataPoints,
+            borderColor: '#32d296',
+            backgroundColor: 'rgba(50,210,150,0.1)',
+            tension: 0.3
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { labels: { color: getComputedStyle(document.body).getPropertyValue('--text-color') } }
+          },
+          scales: {
+            x: { ticks: { color: getComputedStyle(document.body).getPropertyValue('--text-color') } },
+            y: { ticks: { color: getComputedStyle(document.body).getPropertyValue('--text-color') } }
+          }
+        }
+      });
+    }
+
+    // Demo data – gali prijungti realią API istoriją
+    drawChart('btcChart', 'BTC', [57000, 57500, 58000, 58500, 59000, 60000, 59500]);
+    drawChart('ethChart', 'ETH', [3000, 3050, 3100, 3150, 3200, 3250, 3300]);
+
+    // Paleidimas
+    fetchPrices();
+    updateLanguage("lt");
+  </script>
+</body>
+</html>
